@@ -25,8 +25,7 @@ def create_app():
             LIMIT 20;
         """)
 
-        result = db.session.execute(sql)
-        rows = result.fetchall()
+        rows = db.session.execute(sql).fetchall()
 
         html = """
         <h1>Twitter Clone</h1>
@@ -118,6 +117,46 @@ def create_app():
         )
 
         db.session.commit()
+
+        return redirect("/")
+
+    @app.route("/login", methods=["GET", "POST"])
+    def login():
+        if request.method == "GET":
+            return """
+            <h1>Login</h1>
+            <form method="post">
+                Username:<br>
+                <input type="text" name="username"><br><br>
+
+                Password:<br>
+                <input type="password" name="password"><br><br>
+
+                <input type="submit" value="Login">
+            </form>
+            """
+
+        username = request.form["username"].strip()
+        password = request.form["password"]
+
+        sql = text("""
+            SELECT credentials.password_hash
+            FROM users
+            JOIN credentials
+              ON users.id = credentials.user_id
+            WHERE users.username = :username
+        """)
+
+        row = db.session.execute(
+            sql,
+            {"username": username}
+        ).fetchone()
+
+        if row is None:
+            return "Invalid username or password."
+
+        if row.password_hash != password:
+            return "Invalid username or password."
 
         return redirect("/")
 
