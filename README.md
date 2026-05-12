@@ -37,7 +37,7 @@ A database-backed Twitter clone built with Flask, PostgreSQL, Docker, Docker Com
 ├── docker-compose.prod.yml
 └── README.md
 
-##Run the Application
+## Run the Application
 ```
 docker compose up --build
 ```
@@ -45,7 +45,7 @@ docker compose up --build
 Then open: 
 http://localhost:8888
 
-##Main Routes
+## Main Routes
 
 /                 Home page
 /login            Login
@@ -55,7 +55,7 @@ http://localhost:8888
 /search           Search tweets
 
 
-##Database Schema
+## Database Schema
 The database contains three tables:
 
 users
@@ -70,7 +70,7 @@ USING rum(to_tsvector('english', body));
 
 ```
 
-##Stop the Application
+## Stop the Application
 ```
 docker compose down
 ```
