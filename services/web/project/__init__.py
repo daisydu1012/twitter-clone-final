@@ -251,6 +251,39 @@ def create_app():
         if len(rows) == 0:
             html += "<p>No matching tweets found.</p>"
 
+            suggestion = db.session.execute(
+                text("""
+                    WITH words AS (
+                        SELECT DISTINCT lower(clean_word) AS word
+                        FROM (
+                            SELECT regexp_replace(
+                                regexp_split_to_table(body, '\\s+'),
+                                '[^a-zA-Z0-9]',
+                                '',
+                                'g'
+                            ) AS clean_word
+                            FROM tweets
+                            LIMIT 100000
+                        ) split_words
+                        WHERE length(clean_word) > 2
+                    )
+                    SELECT word
+                    FROM words
+                    WHERE similarity(word, :query) > 0.2
+                    ORDER BY similarity(word, :query) DESC
+                    LIMIT 1
+                """),
+                {"query": query.lower()}
+            ).fetchone()
+
+            if suggestion is not None:
+                html += f"""
+                <p>
+                    Did you mean:
+                    <a href="/search?query={suggestion.word}&page=0">{suggestion.word}</a>?
+                </p>
+                """
+
         for row in rows:
             html += f"""
             <p>
