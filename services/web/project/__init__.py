@@ -13,25 +13,21 @@ def create_app():
     @app.route("/")
     def home():
         sql = text("""
-            SELECT
-                tweets.id,
-                users.username,
-                tweets.body,
-                tweets.created_at
+            SELECT tweets.id, users.username, tweets.body, tweets.created_at
             FROM tweets
-            JOIN users
-              ON tweets.user_id = users.id
+            JOIN users ON tweets.user_id = users.id
             ORDER BY tweets.created_at DESC
             LIMIT 20;
         """)
-
         rows = db.session.execute(sql).fetchall()
 
         html = """
         <h1>Twitter Clone</h1>
         <p>
             <a href="/login">Login</a> |
+            <a href="/logout">Logout</a> |
             <a href="/create_account">Create Account</a> |
+            <a href="/create_message">Create Message</a> |
             <a href="/search">Search</a>
         </p>
         <hr>
@@ -57,13 +53,10 @@ def create_app():
             <form method="post">
                 Username:<br>
                 <input type="text" name="username"><br><br>
-
                 Password:<br>
                 <input type="password" name="password1"><br><br>
-
                 Confirm Password:<br>
                 <input type="password" name="password2"><br><br>
-
                 <input type="submit" value="Create Account">
             </form>
             """
@@ -78,46 +71,28 @@ def create_app():
         if password1 != password2:
             return "Passwords do not match."
 
-        # Check if username already exists
-        sql = text("""
-            SELECT id
-            FROM users
-            WHERE username = :username
-        """)
         existing_user = db.session.execute(
-            sql,
+            text("SELECT id FROM users WHERE username = :username"),
             {"username": username}
         ).fetchone()
 
         if existing_user:
             return "Username already exists."
 
-        # Insert new user
-        sql = text("""
-            INSERT INTO users (username)
-            VALUES (:username)
-            RETURNING id
-        """)
         user_id = db.session.execute(
-            sql,
+            text("INSERT INTO users (username) VALUES (:username) RETURNING id"),
             {"username": username}
         ).fetchone()[0]
 
-        # Store password (plain text for now)
-        sql = text("""
-            INSERT INTO credentials (user_id, password_hash)
-            VALUES (:user_id, :password_hash)
-        """)
         db.session.execute(
-            sql,
-            {
-                "user_id": user_id,
-                "password_hash": password1
-            }
+            text("""
+                INSERT INTO credentials (user_id, password_hash)
+                VALUES (:user_id, :password_hash)
+            """),
+            {"user_id": user_id, "password_hash": password1}
         )
 
         db.session.commit()
-
         return redirect("/")
 
     @app.route("/login", methods=["GET", "POST"])
@@ -128,10 +103,8 @@ def create_app():
             <form method="post">
                 Username:<br>
                 <input type="text" name="username"><br><br>
-
                 Password:<br>
                 <input type="password" name="password"><br><br>
-
                 <input type="submit" value="Login">
             </form>
             """
@@ -139,25 +112,65 @@ def create_app():
         username = request.form["username"].strip()
         password = request.form["password"]
 
-        sql = text("""
-            SELECT credentials.password_hash
-            FROM users
-            JOIN credentials
-              ON users.id = credentials.user_id
-            WHERE users.username = :username
-        """)
-
         row = db.session.execute(
-            sql,
+            text("""
+                SELECT users.id, credentials.password_hash
+                FROM users
+                JOIN credentials ON users.id = credentials.user_id
+                WHERE users.username = :username
+            """),
             {"username": username}
         ).fetchone()
 
-        if row is None:
+        if row is None or row.password_hash != password:
             return "Invalid username or password."
 
-        if row.password_hash != password:
-            return "Invalid username or password."
+        return redirect("/")
 
+    @app.route("/logout")
+    def logout():
+        return redirect("/")
+
+    @app.route("/create_message", methods=["GET", "POST"])
+    def create_message():
+        if request.method == "GET":
+            return """
+            <h1>Create Message</h1>
+            <form method="post">
+                Username:<br>
+                <input type="text" name="username"><br><br>
+                Message:<br>
+                <textarea name="body" rows="4" cols="50"></textarea><br><br>
+                <input type="submit" value="Post Message">
+            </form>
+            """
+
+        username = request.form["username"].strip()
+        body = request.form["body"].strip()
+
+        if username == "":
+            return "Username cannot be empty."
+
+        if body == "":
+            return "Message cannot be empty."
+
+        user = db.session.execute(
+            text("SELECT id FROM users WHERE username = :username"),
+            {"username": username}
+        ).fetchone()
+
+        if user is None:
+            return "User does not exist. Please create an account first."
+
+        db.session.execute(
+            text("""
+                INSERT INTO tweets (user_id, body)
+                VALUES (:user_id, :body)
+            """),
+            {"user_id": user.id, "body": body}
+        )
+
+        db.session.commit()
         return redirect("/")
 
     return app
