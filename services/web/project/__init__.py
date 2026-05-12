@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
@@ -8,45 +8,72 @@ db = SQLAlchemy()
 def create_app():
     app = Flask(__name__)
     app.config.from_object("project.config.Config")
+    app.secret_key = "dev-secret-key"
     db.init_app(app)
 
-    @app.route("/")
-    def home():
-        sql = text("""
-            SELECT tweets.id, users.username, tweets.body, tweets.created_at
-            FROM tweets
-            JOIN users ON tweets.user_id = users.id
-            ORDER BY tweets.created_at DESC
-            LIMIT 20;
-        """)
-        rows = db.session.execute(sql).fetchall()
-
-        html = """
-        <h1>Twitter Clone</h1>
+    def menu():
+        if "user_id" in session:
+            return """
+            <p>
+                <a href="/">Home</a> |
+                <a href="/logout">Logout</a> |
+                <a href="/create_message">Create Message</a> |
+                <a href="/search">Search</a>
+            </p>
+            <hr>
+            """
+        return """
         <p>
+            <a href="/">Home</a> |
             <a href="/login">Login</a> |
-            <a href="/logout">Logout</a> |
             <a href="/create_account">Create Account</a> |
-            <a href="/create_message">Create Message</a> |
             <a href="/search">Search</a>
         </p>
         <hr>
         """
 
+    @app.route("/")
+    def home():
+        page = int(request.args.get("page", 0))
+        offset = page * 20
+
+        rows = db.session.execute(
+            text("""
+                SELECT users.username, tweets.body, tweets.created_at
+                FROM tweets
+                JOIN users ON tweets.user_id = users.id
+                ORDER BY tweets.created_at DESC
+                LIMIT 20 OFFSET :offset
+            """),
+            {"offset": offset}
+        ).fetchall()
+
+        html = "<h1>Twitter Clone</h1>" + menu()
+
         for row in rows:
             html += f"""
-            <div>
+            <p>
                 <strong>@{row.username}</strong><br>
                 {row.body}<br>
-                <small>{row.created_at}</small>
-            </div>
+                {row.created_at}
+            </p>
             <hr>
             """
+
+        html += "<p>"
+        if page > 0:
+            html += f'<a href="/?page={page - 1}">Newer messages</a> '
+        if len(rows) == 20:
+            html += f'<a href="/?page={page + 1}">Older messages</a>'
+        html += "</p>"
 
         return html
 
     @app.route("/create_account", methods=["GET", "POST"])
     def create_account():
+        if "user_id" in session:
+            return redirect("/")
+
         if request.method == "GET":
             return """
             <h1>Create Account</h1>
@@ -93,10 +120,13 @@ def create_app():
         )
 
         db.session.commit()
-        return redirect("/")
+        return redirect("/login")
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        if "user_id" in session:
+            return redirect("/")
+
         if request.method == "GET":
             return """
             <h1>Login</h1>
@@ -125,49 +155,42 @@ def create_app():
         if row is None or row.password_hash != password:
             return "Invalid username or password."
 
+        session["user_id"] = row.id
+        session["username"] = username
+
         return redirect("/")
 
     @app.route("/logout")
     def logout():
+        session.clear()
         return redirect("/")
 
     @app.route("/create_message", methods=["GET", "POST"])
     def create_message():
+        if "user_id" not in session:
+            return redirect("/login")
+
         if request.method == "GET":
             return """
             <h1>Create Message</h1>
             <form method="post">
-                Username:<br>
-                <input type="text" name="username"><br><br>
                 Message:<br>
                 <textarea name="body" rows="4" cols="50"></textarea><br><br>
                 <input type="submit" value="Post Message">
             </form>
             """
 
-        username = request.form["username"].strip()
         body = request.form["body"].strip()
-
-        if username == "":
-            return "Username cannot be empty."
 
         if body == "":
             return "Message cannot be empty."
-
-        user = db.session.execute(
-            text("SELECT id FROM users WHERE username = :username"),
-            {"username": username}
-        ).fetchone()
-
-        if user is None:
-            return "User does not exist. Please create an account first."
 
         db.session.execute(
             text("""
                 INSERT INTO tweets (user_id, body)
                 VALUES (:user_id, :body)
             """),
-            {"user_id": user.id, "body": body}
+            {"user_id": session["user_id"], "body": body}
         )
 
         db.session.commit()
@@ -175,7 +198,17 @@ def create_app():
 
     @app.route("/search", methods=["GET", "POST"])
     def search():
-        if request.method == "GET":
+        if request.method == "POST":
+            query = request.form["query"].strip()
+
+            if query == "":
+                return "Search query cannot be empty."
+
+            return redirect(f"/search?query={query}&page=0")
+
+        query = request.args.get("query", "").strip()
+
+        if query == "":
             return """
             <h1>Search Tweets</h1>
             <form method="post">
@@ -185,41 +218,55 @@ def create_app():
             </form>
             """
 
-        query = request.form["query"].strip()
-
-        if query == "":
-            return "Search query cannot be empty."
+        page = int(request.args.get("page", 0))
+        offset = page * 20
 
         rows = db.session.execute(
             text("""
-                SELECT tweets.id, users.username, tweets.body, tweets.created_at
+                SELECT
+                    users.username,
+                    tweets.body,
+                    tweets.created_at,
+                    ts_headline(
+                        'english',
+                        tweets.body,
+                        plainto_tsquery('english', :query)
+                    ) AS highlighted
                 FROM tweets
                 JOIN users ON tweets.user_id = users.id
                 WHERE to_tsvector('english', tweets.body)
                       @@ plainto_tsquery('english', :query)
-                ORDER BY tweets.created_at DESC;
+                ORDER BY ts_rank(
+                    to_tsvector('english', tweets.body),
+                    plainto_tsquery('english', :query)
+                ) DESC
+                LIMIT 20 OFFSET :offset
             """),
-            {"query": query}
+            {"query": query, "offset": offset}
         ).fetchall()
 
-        html = f"""
-        <h1>Search Results for: {query}</h1>
-        <p><a href="/">Back to Home</a></p>
-        <hr>
-        """
+        html = f"<h1>Search Results for: {query}</h1>"
+        html += '<p><a href="/">Back to Home</a></p><hr>'
 
         if len(rows) == 0:
             html += "<p>No matching tweets found.</p>"
 
         for row in rows:
             html += f"""
-            <div>
+            <p>
                 <strong>@{row.username}</strong><br>
-                {row.body}<br>
-                <small>{row.created_at}</small>
-            </div>
+                {row.highlighted}<br>
+                {row.created_at}
+            </p>
             <hr>
             """
+
+        html += "<p>"
+        if page > 0:
+            html += f'<a href="/search?query={query}&page={page - 1}">Previous</a> '
+        if len(rows) == 20:
+            html += f'<a href="/search?query={query}&page={page + 1}">Next</a>'
+        html += "</p>"
 
         return html
 
