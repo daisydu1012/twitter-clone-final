@@ -2,8 +2,7 @@
 
 # Twitter Clone Final Project
 
-A database-backed Twitter clone built with Flask, PostgreSQL, Docker, Docker Compose, and Nginx.
-
+A full-stack Twitter clone built for a Big Data final project using Flask, PostgreSQL, Docker, and Nginx. The application supports user registration, login/logout, tweet creation, and full-text search over more than one million tweets. Search results are ranked by relevance using PostgreSQL full-text search, accelerated with a RUM index, and enhanced with typo suggestions powered by the `pg_trgm` extension. The project also includes automated data-loading scripts, Dockerized deployment, and GitHub Actions continuous integration.
 ## Features
 
 - Create user accounts
@@ -108,9 +107,9 @@ The project includes a script that loads over one million rows into the database
 ```
 This script inserts:
 
-1,000,000 users
-1,000,000 credentials
-1,000,000 tweets
+- 1,000,000 users
+- 1,000,000 credentials
+- 1,000,000 tweets
 
 A smaller debugging script is also included:
 ```
@@ -145,16 +144,16 @@ http://localhost:8888
 
 The `/search` route supports:
 
--PostgreSQL full-text search
--Relevance ranking
--Highlighted matching terms
--Pagination
--Typo suggestions
+- PostgreSQL full-text search
+- Relevance ranking
+- Highlighted matching terms
+- Pagination
+- Typo suggestions
 
-Example:
+### Example:
 
--Searching for data returns tweets containing “data”.
--Searching for datta suggests data.
+- Searching for data returns tweets containing “data”.
+- Searching for datta suggests data.
 
 
 ## Stop the Application
@@ -182,7 +181,7 @@ docker compose down -v
 The project uses:
 
 RUM indexes for efficient ranked full-text search.
-pg_trgm for fast similarity matching.
+`pg_trgm` for fast similarity matching.
 Over one million rows of test data to demonstrate scalability.
 
 ## Repository
