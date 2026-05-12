@@ -36,7 +36,7 @@ A database-backed Twitter clone built with Flask, PostgreSQL, Docker, Docker Com
 ├── docker-compose.yml
 ├── docker-compose.prod.yml
 └── README.md
-
+```
 ## Run the Application**
 ###Development
 ```
