@@ -54,12 +54,13 @@ After starting the containers, open:
 http://localhost:8888
 
 ## Main Routes
-/                 Home page
-/login            Login
-/logout           Logout
-/create_account   Create account
-/create_message   Create a new message
-/search           Search tweets
+
+- `/` — Home page
+- `/login` — Login
+- `/logout` — Logout
+- `/create_account` — Create account
+- `/create_message` — Create a new message
+- `/search` — Search tweets
 
 
 ## Database Schema
