@@ -1,82 +1,87 @@
-![tests](https://github.com/daisydu1012/flask-on-docker/actions/workflows/tests.yml/badge.svg)
-# Flask on Docker
+![tests](https://github.com/daisydu1012/twitter-clone-final/actions/workflows/ci.yml/badge.svg)
 
-A production-ready Flask application containerized with Docker and served with Gunicorn and Nginx.  
-The app supports PostgreSQL, static files, and user-uploaded media.
+# Twitter Clone Final Project
 
-## Overview
+A database-backed Twitter clone built with Flask, PostgreSQL, Docker, Docker Compose, and Nginx.
 
-This project demonstrates how to deploy a full Flask stack using Docker Compose.  
-It includes a Flask backend, a Postgres database, and an Nginx reverse proxy.  
-Users can upload an image through the web interface and access it through a public URL.
+## Features
 
-## Demo
-
-![Demo](assets/demo.gif)
-
-The demo shows:
-
-- starting the containers
-- uploading an image
-- accessing the uploaded file from the browser
-
----
+- Create user accounts
+- Login and logout
+- Create messages
+- Display recent messages on the homepage
+- Search messages using PostgreSQL full-text search
+- Use a RUM index for fast search
 
 ## Tech Stack
 
+- Python
 - Flask
 - PostgreSQL
-- Gunicorn
+- PostgreSQL RUM Extension
+- SQLAlchemy
+- Docker
+- Docker Compose
 - Nginx
-- Docker & Docker Compose
-
----
+- GitHub Actions
 
 ## Project Structure
 
-```
+```text
 .
 ├── services/
-│ ├── web/
-│ └── nginx/
+│   ├── web/
+│   ├── postgres/
+│   └── nginx/
 ├── docker-compose.yml
 ├── docker-compose.prod.yml
 └── README.md
+
+##Run the Application
+```
+docker compose up --build
 ```
 
----
-
-## Build & Run (Development)
-
-```bash
-docker compose up --build
-
-App will be available at:
-
-http://localhost:5001
-Build & Run (Production)
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml exec web python manage.py create_db
-
-App will be available at:
-
+Then open: 
 http://localhost:8888
-Upload a File
 
-Go to:
+##Main Routes
 
-http://localhost:8888/upload
+/                 Home page
+/login            Login
+/logout           Logout
+/create_account   Create account
+/create_message   Create a new message
+/search           Search tweets
 
-After uploading:
 
-http://localhost:8888/media/<filename>
-Stop Containers
+##Database Schema
+The database contains three tables:
+
+users
+credentials
+tweets
+
+The tweets table uses a RUM full-text search index:
+```
+CREATE INDEX idx_tweets_fts
+ON tweets
+USING rum(to_tsvector('english', body));
+
+```
+
+##Stop the Application
+```
+docker compose down
+```
+
+To also remove volumes: 
+```
 docker compose down -v
-Notes
+```
 
-.env.prod.db is excluded from version control for security
 
-Volumes are used for persistent database, static files, and media
 
-Nginx serves static and media files directly in production
-# twitter-clone-final
+
+
+
