@@ -8,34 +8,110 @@ A database-backed Twitter clone built with Flask, PostgreSQL, Docker, Docker Com
 
 - Create user accounts
 - Login and logout
-- Create messages
-- Display the 20 most recent messages on the homepage
-- Search messages using PostgreSQL full-text search
-- Use a RUM index for fast search results
+- Create tweets
+- Display the 20 most recent tweets on the homepage
+- Pagination for older tweets
+- Full-text search using PostgreSQL
+- Search result highlighting with `ts_headline`
+- Search result ranking with `ts_rank_cd`
+- Spelling suggestions for misspelled queries using `pg_trgm` (extra credit)
+- RUM index for fast search performance
 
 ## Tech Stack
 
-- Python
+- Python 3
 - Flask
 - PostgreSQL
-- PostgreSQL RUM extension
-- SQLAlchemy
+- PostgreSQL extensions:
+  - `rum`
+  - `pg_trgm`
 - Docker
 - Docker Compose
 - Nginx
-- GitHub Actions
+- GitHub Actions CI
+
+## Database Schema
+
+The database contains three core tables:
+
+### users
+Stores user accounts.
+
+| Column | Type | Description |
+|------|------|------|
+| id | SERIAL PRIMARY KEY | User ID |
+| username | TEXT UNIQUE NOT NULL | Username |
+
+### credentials
+Stores password hashes.
+
+| Column | Type | Description |
+|------|------|------|
+| user_id | INTEGER PRIMARY KEY | References users(id) |
+| password_hash | TEXT NOT NULL | Hashed password |
+
+### tweets
+Stores messages posted by users.
+
+| Column | Type | Description |
+|------|------|------|
+| id | BIGSERIAL PRIMARY KEY | Tweet ID |
+| user_id | INTEGER NOT NULL | References users(id) |
+| body | TEXT NOT NULL | Tweet content |
+| created_at | TIMESTAMP NOT NULL | Creation timestamp |
+| tsv | TSVECTOR | Full-text search vector |
+
+
+## Indexes
+
+- Primary keys on all tables
+- Unique index on `users.username`
+- RUM index on `tweets.tsv`
+- Trigram index for spelling suggestions
+
+
+## Loading Test Data
+
+The project includes a script that loads over one million rows into the database.
+
+```
+./services/postgres/scripts/load_test_data.sh
+```
+This script inserts:
+
+1,000,000 users
+1,000,000 credentials
+1,000,000 tweets
+
+A smaller debugging script is also included:
+```
+./services/postgres/scripts/load_test_data_small.sh
+```
+
 
 ## Project Structure
 
-```text
-.
+```
+twitter-clone-final/
+├── .github/workflows/ci.yml
+├── assets/
+├── project/
+│   ├── __init__.py
+│   ├── auth.py
+│   ├── routes.py
+│   └── templates/
 ├── services/
-│   ├── web/
-│   ├── postgres/
-│   └── nginx/
+│   └── postgres/
+│       ├── schema.sql
+│       └── scripts/
+│           ├── load_test_data.sh
+│           └── load_test_data_small.sh
 ├── docker-compose.yml
 ├── docker-compose.prod.yml
+├── Dockerfile
+├── manage.py
 └── README.md
+
 ```
 
 ## Run the Application
@@ -62,23 +138,21 @@ http://localhost:8888
 - `/create_message` — Create a new message
 - `/search` — Search tweets
 
+## Search Features
 
-## Database Schema
+The `/search` route supports:
 
-The database contains three tables:
+-PostgreSQL full-text search
+-Relevance ranking
+-Highlighted matching terms
+-Pagination
+-Typo suggestions
 
-users
-credentials
-tweets
+Example:
 
-The tweets table uses a RUM full-text search index:
+-Searching for data returns tweets containing “data”.
+-Searching for datta suggests data.
 
-```
-CREATE INDEX idx_tweets_fts
-    ON tweets
-    USING rum(to_tsvector('english', body));
-
-```
 
 ## Stop the Application
 
@@ -90,6 +164,23 @@ To remove volumes as well:
 ```
 docker compose down -v
 ```
+
+## Example Workflow
+1. Create an account.
+2. Log in.
+3. Create a tweet.
+4. View tweets on the homepage.
+5. Search tweets by keyword.
+6. Receive spelling suggestions for misspelled searches.
+7. Log out.
+
+## Performance
+
+The project uses:
+
+RUM indexes for efficient ranked full-text search.
+pg_trgm for fast similarity matching.
+Over one million rows of test data to demonstrate scalability.
 
 ## Repository
 
