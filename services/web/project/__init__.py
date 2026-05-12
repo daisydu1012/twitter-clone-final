@@ -173,4 +173,54 @@ def create_app():
         db.session.commit()
         return redirect("/")
 
+    @app.route("/search", methods=["GET", "POST"])
+    def search():
+        if request.method == "GET":
+            return """
+            <h1>Search Tweets</h1>
+            <form method="post">
+                Search Term:<br>
+                <input type="text" name="query"><br><br>
+                <input type="submit" value="Search">
+            </form>
+            """
+
+        query = request.form["query"].strip()
+
+        if query == "":
+            return "Search query cannot be empty."
+
+        rows = db.session.execute(
+            text("""
+                SELECT tweets.id, users.username, tweets.body, tweets.created_at
+                FROM tweets
+                JOIN users ON tweets.user_id = users.id
+                WHERE to_tsvector('english', tweets.body)
+                      @@ plainto_tsquery('english', :query)
+                ORDER BY tweets.created_at DESC;
+            """),
+            {"query": query}
+        ).fetchall()
+
+        html = f"""
+        <h1>Search Results for: {query}</h1>
+        <p><a href="/">Back to Home</a></p>
+        <hr>
+        """
+
+        if len(rows) == 0:
+            html += "<p>No matching tweets found.</p>"
+
+        for row in rows:
+            html += f"""
+            <div>
+                <strong>@{row.username}</strong><br>
+                {row.body}<br>
+                <small>{row.created_at}</small>
+            </div>
+            <hr>
+            """
+
+        return html
+
     return app
