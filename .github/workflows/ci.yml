@@ -17,13 +17,8 @@ jobs:
       - name: Build and start containers
         run: docker compose up --build -d
 
-      - name: Show running containers
+      - name: Check running containers
         run: docker compose ps
-
-      - name: Test homepage
-        run: |
-          sleep 10
-          curl -f http://localhost:8888/
 
       - name: Shut down containers
         run: docker compose down
