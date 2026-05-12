@@ -9,16 +9,16 @@ A database-backed Twitter clone built with Flask, PostgreSQL, Docker, Docker Com
 - Create user accounts
 - Login and logout
 - Create messages
-- Display recent messages on the homepage
+- Display the 20 most recent messages on the homepage
 - Search messages using PostgreSQL full-text search
-- Use a RUM index for fast search
+- Use a RUM index for fast search results
 
 ## Tech Stack
 
 - Python
 - Flask
 - PostgreSQL
-- PostgreSQL RUM Extension
+- PostgreSQL RUM extension
 - SQLAlchemy
 - Docker
 - Docker Compose
@@ -37,16 +37,22 @@ A database-backed Twitter clone built with Flask, PostgreSQL, Docker, Docker Com
 ├── docker-compose.prod.yml
 └── README.md
 
-## Run the Application
+## Run the Application**
+###Development
 ```
 docker compose up --build
 ```
+###Production
+```
+docker compose -f docker-compose.prod.yml up --build
+```
 
-Then open: 
+### After starting the containers, open:
+```
 http://localhost:8888
+```
 
 ## Main Routes
-
 /                 Home page
 /login            Login
 /logout           Logout
@@ -54,8 +60,8 @@ http://localhost:8888
 /create_message   Create a new message
 /search           Search tweets
 
-
 ## Database Schema
+
 The database contains three tables:
 
 users
@@ -63,11 +69,11 @@ credentials
 tweets
 
 The tweets table uses a RUM full-text search index:
+
 ```
 CREATE INDEX idx_tweets_fts
-ON tweets
-USING rum(to_tsvector('english', body));
-
+    ON tweets
+    USING rum(to_tsvector('english', body));
 ```
 
 ## Stop the Application
@@ -75,13 +81,13 @@ USING rum(to_tsvector('english', body));
 docker compose down
 ```
 
-To also remove volumes: 
+To remove volumes as well:
 ```
 docker compose down -v
 ```
+## Repository
 
+https://github.com/daisydu1012/twitter-clone-final
 
-
-
-
-
+##Notes
+This project was developed as the final project for CSCI 143 Big Data at Claremont McKenna College.
