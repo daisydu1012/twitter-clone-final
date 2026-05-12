@@ -30,6 +30,35 @@ A database-backed Twitter clone built with Flask, PostgreSQL, Docker, Docker Com
 - Nginx
 - GitHub Actions CI
 
+## Project Structure
+
+```
+twitter-clone-final/
+├── .github/workflows/ci.yml
+├── assets/
+├── services/
+│   ├── nginx/
+│   ├── postgres/
+│   │   ├── Dockerfile
+│   │   ├── schema.sql
+│   │   └── scripts/
+│   │       ├── load_test_data.sh
+│   │       └── load_test_data_small.sh
+│   └── web/
+│       ├── Dockerfile
+│       ├── Dockerfile.prod
+│       ├── manage.py
+│       ├── project/
+│       │   ├── __init__.py
+│       │   └── config.py
+│       └── requirements.txt
+├── docker-compose.yml
+├── docker-compose.prod.yml
+├── .env.dev
+└── README.md
+```
+
+
 ## Database Schema
 
 The database contains three core tables:
@@ -86,32 +115,6 @@ This script inserts:
 A smaller debugging script is also included:
 ```
 ./services/postgres/scripts/load_test_data_small.sh
-```
-
-
-## Project Structure
-
-```
-twitter-clone-final/
-├── .github/workflows/ci.yml
-├── assets/
-├── project/
-│   ├── __init__.py
-│   ├── auth.py
-│   ├── routes.py
-│   └── templates/
-├── services/
-│   └── postgres/
-│       ├── schema.sql
-│       └── scripts/
-│           ├── load_test_data.sh
-│           └── load_test_data_small.sh
-├── docker-compose.yml
-├── docker-compose.prod.yml
-├── Dockerfile
-├── manage.py
-└── README.md
-
 ```
 
 ## Run the Application
