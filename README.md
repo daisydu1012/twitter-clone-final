@@ -38,11 +38,11 @@ A database-backed Twitter clone built with Flask, PostgreSQL, Docker, Docker Com
 └── README.md
 ```
 ## Run the Application**
-###Development
+### Development
 ```
 docker compose up --build
 ```
-###Production
+### Production
 ```
 docker compose -f docker-compose.prod.yml up --build
 ```
@@ -89,5 +89,5 @@ docker compose down -v
 
 https://github.com/daisydu1012/twitter-clone-final
 
-##Notes
+## Notes
 This project was developed as the final project for CSCI 143 Big Data at Claremont McKenna College.
