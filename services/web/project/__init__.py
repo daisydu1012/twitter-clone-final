@@ -1,8 +1,25 @@
 from flask import Flask, request, redirect, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
+from urllib.parse import quote_plus
+import html
 
 db = SQLAlchemy()
+
+
+def safe_page(value):
+    try:
+        page = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return max(page, 0)
+
+
+def safe_highlight(value):
+    escaped = html.escape(value or "")
+    escaped = escaped.replace("[[[", "<mark>")
+    escaped = escaped.replace("]]]", "</mark>")
+    return escaped
 
 
 def create_app():
@@ -34,7 +51,7 @@ def create_app():
 
     @app.route("/")
     def home():
-        page = int(request.args.get("page", 0))
+        page = safe_page(request.args.get("page", 0))
         offset = page * 20
 
         rows = db.session.execute(
@@ -48,26 +65,26 @@ def create_app():
             {"offset": offset}
         ).fetchall()
 
-        html = "<h1>Twitter Clone</h1>" + menu()
+        output = "<h1>Twitter Clone</h1>" + menu()
 
         for row in rows:
-            html += f"""
+            output += f"""
             <p>
-                <strong>@{row.username}</strong><br>
-                {row.body}<br>
+                <strong>@{html.escape(row.username)}</strong><br>
+                {html.escape(row.body)}<br>
                 {row.created_at}
             </p>
             <hr>
             """
 
-        html += "<p>"
+        output += "<p>"
         if page > 0:
-            html += f'<a href="/?page={page - 1}">Newer messages</a> '
+            output += f'<a href="/?page={page - 1}">Newer messages</a> '
         if len(rows) == 20:
-            html += f'<a href="/?page={page + 1}">Older messages</a>'
-        html += "</p>"
+            output += f'<a href="/?page={page + 1}">Older messages</a>'
+        output += "</p>"
 
-        return html
+        return output
 
     @app.route("/create_account", methods=["GET", "POST"])
     def create_account():
@@ -204,7 +221,7 @@ def create_app():
             if query == "":
                 return "Search query cannot be empty."
 
-            return redirect(f"/search?query={query}&page=0")
+            return redirect(f"/search?query={quote_plus(query)}&page=0")
 
         query = request.args.get("query", "").strip()
 
@@ -218,7 +235,7 @@ def create_app():
             </form>
             """
 
-        page = int(request.args.get("page", 0))
+        page = safe_page(request.args.get("page", 0))
         offset = page * 20
 
         rows = db.session.execute(
@@ -230,7 +247,8 @@ def create_app():
                     ts_headline(
                         'english',
                         tweets.body,
-                        plainto_tsquery('english', :query)
+                        plainto_tsquery('english', :query),
+                        'StartSel="[[[", StopSel="]]]"'
                     ) AS highlighted
                 FROM tweets
                 JOIN users ON tweets.user_id = users.id
@@ -245,11 +263,14 @@ def create_app():
             {"query": query, "offset": offset}
         ).fetchall()
 
-        html = f"<h1>Search Results for: {query}</h1>"
-        html += '<p><a href="/">Back to Home</a></p><hr>'
+        escaped_query = html.escape(query)
+        encoded_query = quote_plus(query)
+
+        output = f"<h1>Search Results for: {escaped_query}</h1>"
+        output += '<p><a href="/">Back to Home</a></p><hr>'
 
         if len(rows) == 0:
-            html += "<p>No matching tweets found.</p>"
+            output += "<p>No matching tweets found.</p>"
 
             suggestion = db.session.execute(
                 text("""
@@ -277,30 +298,40 @@ def create_app():
             ).fetchone()
 
             if suggestion is not None:
-                html += f"""
+                safe_suggestion = html.escape(suggestion.word)
+                encoded_suggestion = quote_plus(suggestion.word)
+                output += f"""
                 <p>
                     Did you mean:
-                    <a href="/search?query={suggestion.word}&page=0">{suggestion.word}</a>?
+                    <a href="/search?query={encoded_suggestion}&page=0">{safe_suggestion}</a>?
                 </p>
                 """
 
         for row in rows:
-            html += f"""
+            output += f"""
             <p>
-                <strong>@{row.username}</strong><br>
-                {row.highlighted}<br>
+                <strong>@{html.escape(row.username)}</strong><br>
+                {safe_highlight(row.highlighted)}<br>
                 {row.created_at}
             </p>
             <hr>
             """
 
-        html += "<p>"
+        output += "<p>"
         if page > 0:
-            html += f'<a href="/search?query={query}&page={page - 1}">Previous</a> '
+            output += (
+                f'<a href="/search?query={encoded_query}&page={page - 1}">'
+                'Previous'
+                '</a> '
+            )
         if len(rows) == 20:
-            html += f'<a href="/search?query={query}&page={page + 1}">Next</a>'
-        html += "</p>"
+            output += (
+                f'<a href="/search?query={encoded_query}&page={page + 1}">'
+                'Next'
+                '</a>'
+            )
+        output += "</p>"
 
-        return html
+        return output
 
     return app
